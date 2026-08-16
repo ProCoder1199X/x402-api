@@ -83,8 +83,8 @@ app.get("/api/scraped-data", async (req: Request, res: Response) => {
 });
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("Unhandled error:", err.stack);
-  res.status(500).json({ success: false, error: "Internal server error" });
+  console.error("Unhandled error:", err.message, err.stack);
+  res.status(500).json({ success: false, error: "Internal server error", details: err.message });
 });
 
 export default app;

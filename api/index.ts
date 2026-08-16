@@ -9,7 +9,7 @@ app.use(express.json());
 
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS as `0x${string}`;
 const NETWORK = (process.env.NETWORK || "base") as Network;
-const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402";
+const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402") as `${string}://${string}`;
 const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || "";
 const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || "";
 
@@ -36,6 +36,7 @@ app.use(
         return {
           verify: { Authorization: `Basic ${basicAuth}` },
           settle: { Authorization: `Basic ${basicAuth}` },
+          supported: { Authorization: `Basic ${basicAuth}` },
         };
       },
     }

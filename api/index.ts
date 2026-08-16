@@ -18,6 +18,8 @@ app.get("/", (req: Request, res: Response) => {
     name: "x402 Payment API",
     version: "1.0.0",
     description: "Express server with x402 payment middleware for micropayments",
+    wallet: WALLET_ADDRESS,
+    network: NETWORK,
     endpoints: {
       health: { path: "/health", description: "Health check - no payment required" },
       scraper: { path: "/api/scraped-data", description: "Protected endpoint - requires payment in USDC" }
@@ -29,31 +31,35 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", network: NETWORK, wallet: WALLET_ADDRESS });
 });
 
-app.use(
-  paymentMiddleware(
-    WALLET_ADDRESS,
-    {
-      "GET /api/scraped-data": {
-        price: "$0.01",
-        network: NETWORK,
-        config: {
-          description: "Returns fresh scraped JSON data for a given target URL",
+try {
+  app.use(
+    paymentMiddleware(
+      WALLET_ADDRESS,
+      {
+        "GET /api/scraped-data": {
+          price: "$0.01",
+          network: NETWORK,
+          config: {
+            description: "Returns fresh scraped JSON data for a given target URL",
+          },
         },
       },
-    },
-    {
-      url: FACILITATOR_URL,
-      createAuthHeaders: async () => {
-        const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
-        return {
-          verify: { Authorization: `Basic ${basicAuth}` },
-          settle: { Authorization: `Basic ${basicAuth}` },
-          supported: { Authorization: `Basic ${basicAuth}` },
-        };
-      },
-    }
-  )
-);
+      {
+        url: FACILITATOR_URL,
+        createAuthHeaders: async () => {
+          const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
+          return {
+            verify: { Authorization: `Basic ${basicAuth}` },
+            settle: { Authorization: `Basic ${basicAuth}` },
+            supported: { Authorization: `Basic ${basicAuth}` },
+          };
+        },
+      }
+    )
+  );
+} catch (err) {
+  console.error("Failed to initialize payment middleware:", err);
+}
 
 async function scrapeData(target: string): Promise<Record<string, unknown>> {
   await new Promise((resolve) => setTimeout(resolve, 150));

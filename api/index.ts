@@ -79,4 +79,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ success: false, error: "Internal server error", details: err.message });
 });
 
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 export default app;

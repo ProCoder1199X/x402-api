@@ -2,3 +2,5 @@ echo "node_modules
 .env
 dist" > .gitignore
 node_modules
+.vercel
+.env*

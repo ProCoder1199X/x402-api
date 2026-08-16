@@ -48,18 +48,47 @@ try {
 }
 
 async function scrapeData(target: string): Promise<Record<string, unknown>> {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  return {
-    target,
-    scrapedAt: new Date().toISOString(),
-    title: `Sample title for ${target}`,
-    price: 129.99,
-    inStock: true,
-    metadata: {
-      source: "mock-scraper-v1",
-      confidence: 0.97,
-    },
-  };
+  try {
+    const response = await fetch(target, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const html = await response.text();
+    
+    // Extract clean text from HTML
+    const text = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "") // Remove scripts
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "") // Remove styles
+      .replace(/<[^>]+>/g, " ") // Remove HTML tags
+      .replace(/&nbsp;/g, " ")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ") // Collapse whitespace
+      .trim();
+    
+    // Extract title from HTML if available
+    const titleMatch = html.match(/<title\b[^<]*>([^<]*)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim() : "No title found";
+    
+    return {
+      target,
+      scrapedAt: new Date().toISOString(),
+      title,
+      text: text.substring(0, 1000), // First 1000 chars of clean text
+      textLength: text.length,
+      source: "real-scraper",
+      success: true
+    };
+  } catch (err) {
+    throw new Error(`Failed to scrape ${target}: ${(err as Error).message}`);
+  }
 }
 
 app.get("/api/scraped-data", async (req: Request, res: Response) => {

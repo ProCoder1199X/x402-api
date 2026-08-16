@@ -13,20 +13,6 @@ const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbas
 const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || "";
 const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || "";
 
-app.get("/", (req: Request, res: Response) => {
-  res.json({
-    name: "x402 Payment API",
-    version: "1.0.0",
-    description: "Express server with x402 payment middleware for micropayments",
-    wallet: WALLET_ADDRESS,
-    network: NETWORK,
-    endpoints: {
-      health: { path: "/health", description: "Health check - no payment required" },
-      scraper: { path: "/api/scraped-data", description: "Protected endpoint - requires payment in USDC" }
-    }
-  });
-});
-
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", network: NETWORK, wallet: WALLET_ADDRESS });
 });

@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
-import { paymentMiddleware, Network } from "x402-express";
+import { createPaymentMiddleware, flatPrice } from "@x402/x402-middleware";
+import { paymentOptions } from "@x402/service-runtime";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -9,8 +10,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 4021;
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS as `0x${string}`;
-const NETWORK = (process.env.NETWORK || "base") as Network;
-const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402") as `${string}://${string}`;
+const NETWORK = process.env.NETWORK || "base";
 const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || "";
 const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || "";
 
@@ -29,32 +29,11 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", network: NETWORK, wallet: WALLET_ADDRESS });
 });
 
-// Payment gate — mainnet USDC on Base, routed through the CDP facilitator
-app.use(
-  paymentMiddleware(
-    WALLET_ADDRESS,
-    {
-      "GET /api/scraped-data": {
-        price: "$0.01",
-        network: NETWORK,
-        config: {
-          description: "Returns fresh scraped JSON data for a given target URL",
-        },
-      },
-    },
-    {
-      url: FACILITATOR_URL,
-      createAuthHeaders: async () => {
-        const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
-        return {
-          verify: { Authorization: `Basic ${basicAuth}` },
-          settle: { Authorization: `Basic ${basicAuth}` },
-          supported: { Authorization: `Basic ${basicAuth}` },
-        };
-      },
-    }
-  )
-);
+app.use(createPaymentMiddleware(paymentOptions(), {
+  path: "/api/scraped-data",
+  pricing: flatPrice("$0.01"),
+  description: "Returns fresh scraped JSON data for a given target URL"
+}));
 
 // Mock scraper logic — swap this out for your real data/scraping code
 async function scrapeData(target: string): Promise<Record<string, unknown>> {

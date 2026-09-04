@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { wrapFetchWithPayment } from "x402-fetch";
+import { wrapFetchWithPayment } from "@x402/fetch";
 import { privateKeyToAccount } from "viem/accounts";
 
 const baseUrl = process.env.SMOKE_BASE_URL || "http://localhost:8080";

@@ -8,6 +8,7 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "@x402/x402-middleware": "file:../x402-middleware"
+    "@x402/x402-middleware": "file:../x402-middleware",
+    "@x402/core": "^2.25.0"
   }
 }

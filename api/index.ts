@@ -1,75 +1,60 @@
 import express, { Request, Response, NextFunction } from "express";
-import { paymentMiddleware, Network } from "x402-express";
+import { paymentMiddleware } from "@x402/express";
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
+import { registerExactEvmScheme } from "@x402/evm/exact/server";
 import { declareDiscoveryExtension, bazaarResourceServerExtension } from "@x402/extensions/bazaar";
+import type { Network } from "@x402/core/types";
 import dotenv from "dotenv";
+import portfolio from "./portfolio";
+import openapi from "../openapi.json";
 
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", true);
 app.use(express.json());
+app.get("/openapi.json", (_req: Request, res: Response) => res.json(openapi));
+app.use(portfolio);
 
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS as `0x${string}`;
-const NETWORK = (process.env.NETWORK || "base") as Network;
-const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402") as `${string}://${string}`;
+const NETWORK_NAME = process.env.NETWORK || "base";
+const NETWORK = (NETWORK_NAME === "base-sepolia" ? "eip155:84532" : "eip155:8453") as Network;
+const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/v2/x402/facilitator") as `${string}://${string}`;
 const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || "";
 const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || "";
 
 app.get("/health", (req: Request, res: Response) => {
-  res.json({ status: "ok", network: NETWORK, wallet: WALLET_ADDRESS });
+  res.json({ status: "ok", network: NETWORK_NAME, wallet: WALLET_ADDRESS });
 });
 
-try {
-  app.use(
-    paymentMiddleware(
-      WALLET_ADDRESS,
-      {
-        "GET /api/scraped-data": {
-          price: "$0.01",
-          network: NETWORK,
-          config: {
-            description: "Returns fresh scraped JSON data for a given target URL",
-          },
-          extensions: {
-            ...declareDiscoveryExtension({
-              input: { target: "https://example.com" },
-              inputSchema: {
-                properties: {
-                  target: { type: "string", description: "URL to scrape data for" },
-                },
-                required: ["target"],
-              },
-              output: {
-                example: {
-                  success: true,
-                  data: {
-                    target: "https://example.com",
-                    scrapedAt: "2026-08-17T12:00:00.000Z",
-                    title: "Sample title for https://example.com",
-                    price: 129.99,
-                    inStock: true,
-                  },
-                },
-              },
-            }),
-          },
-        },
-      },
-      {
-        url: FACILITATOR_URL,
-        createAuthHeaders: async () => {
-          const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
-          return {
-            verify: { Authorization: `Basic ${basicAuth}` },
-            settle: { Authorization: `Basic ${basicAuth}` },
-            supported: { Authorization: `Basic ${basicAuth}` },
-          };
-        },
-      }
-    )
-  );
-} catch (err) {
-  console.error("Failed to initialize payment middleware:", err);
-}
+const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
+const facilitator = new HTTPFacilitatorClient({
+  url: FACILITATOR_URL,
+  createAuthHeaders: async () => ({
+    verify: { Authorization: `Basic ${basicAuth}` },
+    settle: { Authorization: `Basic ${basicAuth}` },
+    supported: { Authorization: `Basic ${basicAuth}` },
+    bazaar: { Authorization: `Basic ${basicAuth}` }
+  })
+});
+const resourceServer = registerExactEvmScheme(
+  new x402ResourceServer(facilitator).registerExtension(bazaarResourceServerExtension),
+  { networks: [NETWORK] }
+);
+const scraperDiscovery = declareDiscoveryExtension({
+  method: "GET",
+  input: { queryParams: { target: "https://example.com" } },
+  inputSchema: { properties: { queryParams: { type: "object", properties: { target: { type: "string", format: "uri" } }, required: ["target"] } } },
+  output: { example: { success: true, data: { target: "https://example.com", title: "Example Domain", text: "...", textLength: 3, source: "real-scraper", success: true } } }
+});
+app.use(paymentMiddleware({
+  "GET /api/scraped-data": {
+    accepts: { scheme: "exact", price: "$0.01", network: NETWORK, payTo: WALLET_ADDRESS, maxTimeoutSeconds: 300 },
+    description: "Returns fresh scraped JSON data for a given target URL",
+    mimeType: "application/json",
+    extensions: scraperDiscovery
+  }
+}, resourceServer));
 
 async function scrapeData(target: string): Promise<Record<string, unknown>> {
   try {

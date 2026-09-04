@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { Network, RouteConfig } from "x402-express";
+import type { Network } from "@x402/core/types";
 
 export type PricingResolver = (request: Request) => string | Promise<string>;
 
@@ -9,6 +9,8 @@ export type PaymentRouteOptions = {
   pricing: PricingResolver;
   description: string;
   network?: Network;
+  extensions?: Record<string, unknown>;
+  mimeType?: string;
 };
 
 export type MiddlewareOptions = {
@@ -23,8 +25,3 @@ export type MiddlewareOptions = {
   }>;
 };
 
-export type ResolvedRouteConfig = RouteConfig & {
-  config: {
-    description: string;
-  };
-};

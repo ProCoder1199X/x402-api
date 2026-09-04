@@ -1,219 +1,213 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "x402 Scraped Data API",
+    "title": "x402 API Portfolio",
     "version": "1.0.0",
-    "description": "Fetches cleaned, structured data from a target URL. The scraper endpoint is protected by the x402 payment protocol and costs $0.01 USDC on Base per request."
+    "description": "Five machine-native REST services protected by x402 payments on Base USDC. Every operation below is paid and returns HTTP 402 with x402 payment requirements before a successful paid retry."
   },
-  "servers": [
-    {
-      "url": "https://x402-api-91r3.vercel.app",
-      "description": "Production Vercel deployment"
-    }
-  ],
+  "servers": [{"url": "https://x402-api-91r3.vercel.app", "description": "Production"}],
+  "security": [{"x402Payment": []}],
   "paths": {
-    "/api/scraped-data": {
+    "/alpharoute/api/v1/quote": {
       "get": {
-        "operationId": "getScrapedData",
-        "summary": "Scrape a target URL",
-        "description": "Returns cleaned text and metadata for the target URL. This operation requires x402 payment of $0.01 USDC on Base. If payment is omitted or invalid, the server responds with HTTP 402 and a PAYMENT-REQUIRED header describing the payment requirements.",
+        "operationId": "alphaRouteQuote",
+        "summary": "Get an optimal execution route",
+        "description": "Price: $0.015 for standard quotes; $0.12 when amountIn is greater than 10,000.",
         "parameters": [
-          {
-            "name": "target",
-            "in": "query",
-            "required": false,
-            "description": "The absolute URL to fetch and scrape. Defaults to https://example.com when omitted.",
-            "schema": {
-              "type": "string",
-              "format": "uri",
-              "default": "https://example.com",
-              "example": "https://example.com"
-            }
-          }
+          {"name": "tokenIn", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/EvmAddress"}},
+          {"name": "tokenOut", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/EvmAddress"}},
+          {"name": "amountIn", "in": "query", "required": true, "schema": {"type": "string", "description": "Amount in token base units"}},
+          {"name": "maxSlippageBps", "in": "query", "required": false, "schema": {"type": "integer", "default": 50, "minimum": 0}},
+          {"name": "chainId", "in": "query", "required": true, "schema": {"type": "integer", "enum": [8453]}}
         ],
-        "responses": {
-          "200": {
-            "description": "Scraped data returned successfully after payment settlement.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScrapedDataResponse"
-                }
-              }
-            }
-          },
-          "402": {
-            "description": "Payment required. The client must use the x402 payment requirements in PAYMENT-REQUIRED, submit payment, and retry the request with the payment signature header.",
-            "headers": {
-              "PAYMENT-REQUIRED": {
-                "$ref": "#/components/headers/PaymentRequired"
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentRequiredResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Scraping or internal server error.",
-            "content": {
-              "application/json": {
-                "$ref": "#/components/schemas/ErrorResponse"
-              }
-            }
-          },
-          "404": {
-            "description": "Route not found.",
-            "content": {
-              "application/json": {
-                "$ref": "#/components/schemas/NotFoundResponse"
-              }
-            }
-          }
-        },
-        "x-x402": {
-          "price": "$0.01",
-          "network": "base",
-          "paymentRequiredResponse": 402,
-          "paymentRequiredHeader": "PAYMENT-REQUIRED",
-          "paymentSignatureRequestHeader": "PAYMENT-SIGNATURE",
-          "paymentResponseHeader": "PAYMENT-RESPONSE"
-        }
+        "responses": {"200": {"$ref": "#/components/responses/AlphaQuote"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
       }
     },
-    "/health": {
+    "/alpharoute/api/v1/execute": {
+      "post": {
+        "operationId": "alphaRouteExecute",
+        "summary": "Execute a quoted route",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExecuteRequest"}}}},
+        "responses": {"200": {"$ref": "#/components/responses/ExecuteResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/alpharoute/api/v1/route-status/{routeId}": {
       "get": {
-        "operationId": "getHealth",
-        "summary": "Check API health",
-        "description": "Returns deployment and payment-network health information. This endpoint is public and is not protected by x402.",
-        "responses": {
-          "200": {
-            "description": "API is running.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
+        "operationId": "alphaRouteStatus",
+        "summary": "Get route execution status",
+        "parameters": [{"$ref": "#/components/parameters/RouteId"}],
+        "responses": {"200": {"$ref": "#/components/responses/RouteStatus"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/sentinelfeed/api/v1/events": {
+      "get": {
+        "operationId": "sentinelFeedEvents",
+        "summary": "Fetch structured events",
+        "parameters": [
+          {"name": "topic", "in": "query", "required": true, "schema": {"type": "string", "example": "token_launch"}},
+          {"name": "since", "in": "query", "required": false, "schema": {"type": "string", "format": "date-time"}},
+          {"name": "tier", "in": "query", "required": false, "schema": {"type": "string", "enum": ["standard", "realtime"], "default": "standard"}}
+        ],
+        "responses": {"200": {"$ref": "#/components/responses/EventsResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/sentinelfeed/api/v1/entities/{entityId}/mentions": {
+      "get": {
+        "operationId": "sentinelFeedMentions",
+        "summary": "Fetch entity mentions",
+        "parameters": [{"$ref": "#/components/parameters/EntityId"}, {"name": "window", "in": "query", "required": false, "schema": {"type": "string", "default": "15m"}}],
+        "responses": {"200": {"$ref": "#/components/responses/MentionsResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/sentinelfeed/api/v1/stream/subscribe": {
+      "post": {
+        "operationId": "sentinelFeedSubscribe",
+        "summary": "Open a prepaid event stream",
+        "description": "Charges a $5.00 prepaid balance for the metered stream stub.",
+        "responses": {"202": {"$ref": "#/components/responses/SubscriptionResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/complyrail/api/v1/screen/wallet/{address}": {
+      "get": {
+        "operationId": "complyRailWalletScreen",
+        "summary": "Screen a wallet",
+        "parameters": [{"$ref": "#/components/parameters/Address"}, {"$ref": "#/components/parameters/ChainId"}],
+        "responses": {"200": {"$ref": "#/components/responses/WalletScreenResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/complyrail/api/v1/screen/transaction": {
+      "get": {
+        "operationId": "complyRailTransactionScreen",
+        "summary": "Screen a transaction and create an attestation",
+        "parameters": [
+          {"name": "from", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/EvmAddress"}},
+          {"name": "to", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/EvmAddress"}},
+          {"name": "amount", "in": "query", "required": true, "schema": {"type": "string"}},
+          {"name": "asset", "in": "query", "required": true, "schema": {"type": "string", "example": "USDC"}}
+        ],
+        "responses": {"200": {"$ref": "#/components/responses/TransactionScreenResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/complyrail/api/v1/attest/batch": {
+      "post": {
+        "operationId": "complyRailBatchAttest",
+        "summary": "Create batch wallet attestations",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BatchAttestRequest"}}}},
+        "responses": {"200": {"$ref": "#/components/responses/BatchAttestResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/distillforge/api/v1/infer/classify": {
+      "post": {
+        "operationId": "distillForgeClassify",
+        "summary": "Classify text with a narrow model",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ClassifyRequest"}}}},
+        "responses": {"200": {"$ref": "#/components/responses/InferenceResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/distillforge/api/v1/infer/extract": {
+      "post": {
+        "operationId": "distillForgeExtract",
+        "summary": "Extract structured data from a document",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExtractRequest"}}}},
+        "responses": {"200": {"$ref": "#/components/responses/ExtractResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/distillforge/api/v1/infer/reason": {
+      "post": {
+        "operationId": "distillForgeReason",
+        "summary": "Run narrow-domain reasoning",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true}}}},
+        "responses": {"200": {"$ref": "#/components/responses/InferenceResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/distillforge/api/v1/models": {
+      "get": {
+        "operationId": "distillForgeModels",
+        "summary": "List available models",
+        "responses": {"200": {"$ref": "#/components/responses/ModelsResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/proofmesh/api/v1/verify/zkproof": {
+      "post": {
+        "operationId": "proofMeshZkProof",
+        "summary": "Submit a zkML proof job",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ZkProofRequest"}}}},
+        "responses": {"202": {"$ref": "#/components/responses/ProofJobResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/proofmesh/api/v1/verify/teeattest": {
+      "post": {
+        "operationId": "proofMeshTeeAttest",
+        "summary": "Verify a TEE computation attestation",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TeeAttestRequest"}}}},
+        "responses": {"200": {"$ref": "#/components/responses/TeeResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/proofmesh/api/v1/verify/status/{proofId}": {
+      "get": {
+        "operationId": "proofMeshStatus",
+        "summary": "Poll a proof job",
+        "parameters": [{"$ref": "#/components/parameters/ProofId"}],
+        "responses": {"200": {"$ref": "#/components/responses/ProofStatusResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
+      }
+    },
+    "/api/scraped-data": {
+      "get": {
+        "operationId": "scrapeData",
+        "summary": "Scrape a target URL",
+        "parameters": [{"name": "target", "in": "query", "required": false, "schema": {"type": "string", "format": "uri", "default": "https://example.com"}}],
+        "responses": {"200": {"$ref": "#/components/responses/ScrapeResponse"}, "402": {"$ref": "#/components/responses/PaymentRequired"}}
       }
     }
   },
   "components": {
+    "securitySchemes": {"x402Payment": {"type": "apiKey", "in": "header", "name": "X-PAYMENT", "description": "Base64-encoded x402 payment payload sent on the retry request."}},
     "headers": {
-      "PaymentRequired": {
-        "description": "x402 payment requirements. The exact serialized format is defined by the deployed x402 middleware.",
-        "schema": {
-          "type": "string"
-        }
-      }
+      "PaymentRequired": {"description": "Base64-encoded x402 payment requirements. Includes network, USDC asset, payTo, resource, and amount.", "schema": {"type": "string"}},
+      "PaymentResponse": {"description": "Base64-encoded x402 settlement response, including the settlement transaction hash when available.", "schema": {"type": "string"}}
+    },
+    "parameters": {
+      "RouteId": {"name": "routeId", "in": "path", "required": true, "schema": {"type": "string"}},
+      "EntityId": {"name": "entityId", "in": "path", "required": true, "schema": {"type": "string"}},
+      "Address": {"name": "address", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/EvmAddress"}},
+      "ChainId": {"name": "chainId", "in": "query", "required": false, "schema": {"type": "integer", "default": 8453, "enum": [8453]}},
+      "ProofId": {"name": "proofId", "in": "path", "required": true, "schema": {"type": "string"}}
+    },
+    "responses": {
+      "PaymentRequired": {"description": "HTTP 402 payment challenge. Sign an EIP-3009 USDC transferWithAuthorization based on the requirements, send it as X-PAYMENT, and retry. Successful responses include PAYMENT-RESPONSE.", "headers": {"PAYMENT-REQUIRED": {"$ref": "#/components/headers/PaymentRequired"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PaymentChallenge"}}}},
+      "AlphaQuote": {"description": "Paid route result", "headers": {"PAYMENT-RESPONSE": {"$ref": "#/components/headers/PaymentResponse"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AlphaQuote"}}}},
+      "ExecuteResponse": {"description": "Paid execution result", "content": {"application/json": {"schema": {"type": "object", "properties": {"routeId": {"type": "string"}, "status": {"type": "string"}, "settlementTxHash": {"type": "string", "nullable": true}}}}}},
+      "RouteStatus": {"description": "Paid route status", "content": {"application/json": {"schema": {"type": "object", "properties": {"routeId": {"type": "string"}, "status": {"type": "string"}}}}}},
+      "EventsResponse": {"description": "Structured event batch", "content": {"application/json": {"schema": {"type": "object", "properties": {"events": {"type": "array", "items": {"type": "object", "additionalProperties": true}}, "freshnessMs": {"type": "integer"}}}}}},
+      "MentionsResponse": {"description": "Entity mentions", "content": {"application/json": {"schema": {"type": "object", "properties": {"entityId": {"type": "string"}, "mentions": {"type": "array", "items": {"type": "object", "additionalProperties": true}}}}}}},
+      "SubscriptionResponse": {"description": "Prepaid stream subscription", "content": {"application/json": {"schema": {"type": "object", "properties": {"subscriptionId": {"type": "string"}, "balanceUsdc": {"type": "string"}}}}}},
+      "WalletScreenResponse": {"description": "Wallet screening result", "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string"}, "sanctioned": {"type": "boolean"}, "riskScore": {"type": "number"}}}}}},
+      "TransactionScreenResponse": {"description": "Transaction screening attestation", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TransactionScreen"}}}},
+      "BatchAttestResponse": {"description": "Batch attestations", "content": {"application/json": {"schema": {"type": "object", "properties": {"attestations": {"type": "array", "items": {"type": "object", "additionalProperties": true}}}}}}},
+      "InferenceResponse": {"description": "Inference result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Inference"}}}},
+      "ExtractResponse": {"description": "Extraction result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExtractResult"}}}},
+      "ModelsResponse": {"description": "Paid model catalog", "content": {"application/json": {"schema": {"type": "object", "properties": {"models": {"type": "array", "items": {"type": "object", "additionalProperties": true}}}}}}},
+      "ProofJobResponse": {"description": "Proof job accepted", "content": {"application/json": {"schema": {"type": "object", "properties": {"proofId": {"type": "string"}, "settlementTxHash": {"type": "string", "nullable": true}, "estimatedCompletionSec": {"type": "integer"}}}}}},
+      "TeeResponse": {"description": "TEE result", "content": {"application/json": {"schema": {"type": "object", "properties": {"verified": {"type": "boolean"}, "attestation": {"type": "string"}, "settlementTxHash": {"type": "string", "nullable": true}}}}}},
+      "ProofStatusResponse": {"description": "Paid proof status", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProofStatus"}}}},
+      "ScrapeResponse": {"description": "Paid scraped data", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScrapeResult"}}}}
     },
     "schemas": {
-      "ScrapedDataResponse": {
-        "type": "object",
-        "required": ["success", "data"],
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/ScrapedData"
-          }
-        }
-      },
-      "ScrapedData": {
-        "type": "object",
-        "required": ["target", "scrapedAt", "title", "text", "textLength", "source", "success"],
-        "properties": {
-          "target": {
-            "type": "string",
-            "format": "uri",
-            "example": "https://example.com"
-          },
-          "scrapedAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-08-17T12:00:00.000Z"
-          },
-          "title": {
-            "type": "string",
-            "example": "Example Domain"
-          },
-          "text": {
-            "type": "string",
-            "description": "The first 1,000 characters of cleaned page text."
-          },
-          "textLength": {
-            "type": "integer",
-            "minimum": 0,
-            "example": 125
-          },
-          "source": {
-            "type": "string",
-            "example": "real-scraper"
-          },
-          "success": {
-            "type": "boolean",
-            "example": true
-          }
-        }
-      },
-      "PaymentRequiredResponse": {
-        "type": "object",
-        "description": "The middleware's x402 payment-required response. Payment requirements are carried in the PAYMENT-REQUIRED response header.",
-        "additionalProperties": true
-      },
-      "HealthResponse": {
-        "type": "object",
-        "required": ["status", "network", "wallet"],
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "ok"
-          },
-          "network": {
-            "type": "string",
-            "example": "base"
-          },
-          "wallet": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "required": ["success", "error"],
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
-          },
-          "error": {
-            "type": "string",
-            "example": "Internal scraping error"
-          },
-          "details": {
-            "type": "string"
-          }
-        }
-      },
-      "NotFoundResponse": {
-        "type": "object",
-        "required": ["error"],
-        "properties": {
-          "error": {
-            "type": "string",
-            "example": "Not found"
-          }
-        }
-      }
+      "EvmAddress": {"type": "string", "pattern": "^0x[a-fA-F0-9]{40}$", "example": "0x0000000000000000000000000000000000000001"},
+      "PaymentChallenge": {"type": "object", "required": ["x402Version", "accepts"], "properties": {"x402Version": {"type": "integer", "example": 1}, "accepts": {"type": "array", "items": {"$ref": "#/components/schemas/PaymentRequirement"}}}},
+      "PaymentRequirement": {"type": "object", "required": ["scheme", "network", "asset", "payTo", "maxAmountRequired", "resource"], "properties": {"scheme": {"type": "string", "example": "exact"}, "network": {"type": "string", "example": "base"}, "asset": {"type": "string", "example": "USDC"}, "payTo": {"$ref": "#/components/schemas/EvmAddress"}, "maxAmountRequired": {"type": "string", "description": "USDC atomic units with 6 decimals"}, "resource": {"type": "string"}, "description": {"type": "string"}}},
+      "AlphaQuote": {"type": "object", "required": ["routeId", "chainId", "tokenIn", "tokenOut", "amountIn", "expectedOut", "priceImpactBps", "maxSlippageBps", "selectedVenues", "routeType", "calldata", "quoteFingerprint", "expiresAt"], "properties": {"routeId": {"type": "string"}, "chainId": {"type": "integer", "example": 8453}, "tokenIn": {"$ref": "#/components/schemas/EvmAddress"}, "tokenOut": {"$ref": "#/components/schemas/EvmAddress"}, "amountIn": {"type": "string"}, "expectedOut": {"type": "string"}, "priceImpactBps": {"type": "integer"}, "maxSlippageBps": {"type": "integer"}, "selectedVenues": {"type": "array", "items": {"type": "string"}}, "routeType": {"type": "string", "enum": ["single-hop", "multi-hop-split"]}, "calldata": {"type": "string"}, "quoteFingerprint": {"type": "string"}, "expiresAt": {"type": "string", "format": "date-time"}}},
+      "ExecuteRequest": {"type": "object", "required": ["routeId", "signedPermit", "maxSlippageBps"], "properties": {"routeId": {"type": "string"}, "signedPermit": {"type": "string"}, "maxSlippageBps": {"type": "integer"}, "notionalUsd": {"type": "number"}}},
+      "TransactionScreen": {"type": "object", "required": ["from", "to", "amount", "asset", "riskScore", "sanctioned", "decision", "attestation"], "properties": {"from": {"$ref": "#/components/schemas/EvmAddress"}, "to": {"$ref": "#/components/schemas/EvmAddress"}, "amount": {"type": "string"}, "asset": {"type": "string"}, "riskScore": {"type": "number", "minimum": 0, "maximum": 1}, "sanctioned": {"type": "boolean"}, "decision": {"type": "string", "enum": ["allow", "review", "block"]}, "attestation": {"type": "object", "additionalProperties": true}, "settlementTxHash": {"type": "string", "nullable": true}}},
+      "BatchAttestRequest": {"type": "object", "required": ["addresses"], "properties": {"addresses": {"type": "array", "items": {"$ref": "#/components/schemas/EvmAddress"}}}},
+      "ClassifyRequest": {"type": "object", "required": ["text", "taxonomy"], "properties": {"text": {"type": "string"}, "taxonomy": {"type": "string", "example": "onchain_events_v3"}, "maxTokens": {"type": "integer"}}},
+      "ExtractRequest": {"type": "object", "required": ["document", "schema"], "properties": {"document": {"type": "string"}, "schema": {"type": "object"}, "maxTokensCeiling": {"type": "integer", "default": 2000}}},
+      "Inference": {"type": "object", "properties": {"model": {"type": "string"}, "result": {"type": "object", "additionalProperties": true}, "tokensUsed": {"type": "integer"}, "billedAmountUsdc": {"type": "string"}}},
+      "ExtractResult": {"allOf": [{"$ref": "#/components/schemas/Inference"}, {"type": "object", "properties": {"refundTxHash": {"type": "string", "nullable": true}}}]},
+      "ZkProofRequest": {"type": "object", "required": ["modelHash", "inputHash", "outputHash", "proofSystem"], "properties": {"modelHash": {"type": "string"}, "inputHash": {"type": "string"}, "outputHash": {"type": "string"}, "proofSystem": {"type": "string", "enum": ["ezkl", "risczero"]}}},
+      "TeeAttestRequest": {"type": "object", "required": ["enclaveId", "computationDigest"], "properties": {"enclaveId": {"type": "string"}, "computationDigest": {"type": "string"}}},
+      "ProofStatus": {"type": "object", "required": ["proofId", "status", "proofSystem", "progressPercent", "resultFingerprint"], "properties": {"proofId": {"type": "string"}, "status": {"type": "string", "enum": ["queued", "proving", "complete", "failed"]}, "proof": {"type": "string", "nullable": true}, "proofSystem": {"type": "string", "enum": ["ezkl", "risczero"]}, "progressPercent": {"type": "integer", "minimum": 0, "maximum": 100}, "resultFingerprint": {"type": "string"}}},
+      "ScrapeResult": {"type": "object", "properties": {"success": {"type": "boolean"}, "data": {"type": "object", "additionalProperties": true}}}
     }
   }
 }

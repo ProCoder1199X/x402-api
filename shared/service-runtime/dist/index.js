@@ -7,13 +7,13 @@ const paymentOptions = () => {
     if (!payTo || !/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
         throw new Error("PAY_TO must be a valid EVM address");
     }
-    const facilitatorUrl = process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402";
+    const facilitatorUrl = process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/v2/x402/facilitator";
     const keyId = process.env.CDP_API_KEY_ID || "";
     const keySecret = process.env.CDP_API_KEY_SECRET || "";
     const basic = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
     return {
         payTo: payTo,
-        network: (process.env.NETWORK || "base"),
+        network: (process.env.NETWORK === "base-sepolia" ? "eip155:84532" : "eip155:8453"),
         facilitatorUrl: facilitatorUrl,
         createAuthHeaders: async () => ({
             verify: { Authorization: `Basic ${basic}` },

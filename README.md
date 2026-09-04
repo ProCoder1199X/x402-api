@@ -1,24 +1,31 @@
 # x402 API Portfolio
 
-Five Express + TypeScript services monetized with x402 on Base USDC.
+Five Express + TypeScript x402 services share one Vercel deployment and one Base USDC treasury.
 
-## Services
+## Production access
 
-- AlphaRoute: port 3001
-- SentinelFeed: port 3002
-- ComplyRail: port 3003
-- DistillForge: port 3004
-- ProofMesh: port 3005
+Base URL: `https://x402-api-91r3.vercel.app`
 
-Every public route is payment-gated, including health, catalog, and status routes. Business implementations are intentionally stubbed and marked by their response values; replace them before production.
+- AlphaRoute: `/alpharoute`
+- SentinelFeed: `/sentinelfeed`
+- ComplyRail: `/complyrail`
+- DistillForge: `/distillforge`
+- ProofMesh: `/proofmesh`
+- Original scraper: `/api/scraped-data`
 
-## Run
+Every public operation is paid. An unpaid request returns HTTP 402 with a `PAYMENT-REQUIRED` header. Sign the EIP-3009 USDC payment and retry it in `X-PAYMENT`; the successful response includes `PAYMENT-RESPONSE`.
 
-```bash
+The complete marketplace-ready catalog is in [MARKETPLACE.md](MARKETPLACE.md). Copy-paste payloads and schemas for every business endpoint are in [MARKETPLACE_METADATA.md](MARKETPLACE_METADATA.md), and the machine-readable API contract is [openapi.json](openapi.json).
+
+## Local development
+
+```powershell
 npm install
-npm run build
-copy .env.example .env
+Copy-Item .env.example .env
+npm run build:all
 npm run dev:alpharoute
 ```
 
-See `scripts/smoke-test.ps1` for unpaid 402 checks and the signed-payment retry flow.
+Use [scripts/smoke-test.ps1](scripts/smoke-test.ps1) for unpaid 402 checks. Use `npm run smoke` with `AGENT_WALLET_PRIVATE_KEY` set locally for signed retries.
+
+The business responses are launch stubs and must be replaced before production use.

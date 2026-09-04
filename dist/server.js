@@ -4,15 +4,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const x402_express_1 = require("x402-express");
+const x402_middleware_1 = require("@x402/x402-middleware");
+const service_runtime_1 = require("@x402/service-runtime");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 4021;
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS;
-const NETWORK = (process.env.NETWORK || "base");
-const FACILITATOR_URL = (process.env.FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/x402");
+const NETWORK = process.env.NETWORK || "base";
 const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || "";
 const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || "";
 if (!WALLET_ADDRESS || !WALLET_ADDRESS.startsWith("0x") || WALLET_ADDRESS.length !== 42) {
@@ -27,25 +27,10 @@ if (!CDP_API_KEY_ID || !CDP_API_KEY_SECRET) {
 app.get("/health", (req, res) => {
     res.json({ status: "ok", network: NETWORK, wallet: WALLET_ADDRESS });
 });
-// Payment gate — mainnet USDC on Base, routed through the CDP facilitator
-app.use((0, x402_express_1.paymentMiddleware)(WALLET_ADDRESS, {
-    "GET /api/scraped-data": {
-        price: "$0.01",
-        network: NETWORK,
-        config: {
-            description: "Returns fresh scraped JSON data for a given target URL",
-        },
-    },
-}, {
-    url: FACILITATOR_URL,
-    createAuthHeaders: async () => {
-        const basicAuth = Buffer.from(`${CDP_API_KEY_ID}:${CDP_API_KEY_SECRET}`).toString("base64");
-        return {
-            verify: { Authorization: `Basic ${basicAuth}` },
-            settle: { Authorization: `Basic ${basicAuth}` },
-            supported: { Authorization: `Basic ${basicAuth}` },
-        };
-    },
+app.use((0, x402_middleware_1.createPaymentMiddleware)((0, service_runtime_1.paymentOptions)(), {
+    path: "/api/scraped-data",
+    pricing: (0, x402_middleware_1.flatPrice)("$0.01"),
+    description: "Returns fresh scraped JSON data for a given target URL"
 }));
 // Mock scraper logic — swap this out for your real data/scraping code
 async function scrapeData(target) {

@@ -9,6 +9,5 @@ export {
 export type {
   MiddlewareOptions,
   PaymentRouteOptions,
-  PricingResolver,
-  ResolvedRouteConfig
+  PricingResolver
 } from "./types";

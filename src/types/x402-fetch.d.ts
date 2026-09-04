@@ -1,4 +1,4 @@
-declare module "x402-fetch" {
+declare module "@x402/fetch" {
   import type { Account } from "viem";
 
   export function wrapFetchWithPayment(

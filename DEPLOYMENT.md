@@ -5,7 +5,7 @@
 - Create a dedicated CDP API key with only the facilitator permissions required by the deployment.
 - Set `FACILITATOR_URL` to the current CDP x402 facilitator URL from the CDP dashboard.
 - Set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` as server-side secrets.
-- Set `PAY_TO` to the treasury EVM address that should receive USDC.
+- Set `PAY_TO` to the treasury EVM address that should receive USDC. The existing `WALLET_ADDRESS` is accepted as a fallback.
 - Set `NETWORK=base` and verify the asset is Base USDC, not Base Sepolia USDC.
 - Set `RPC_URL` to an authenticated Base RPC endpoint if business logic needs chain reads.
 - Fund the agent wallet used by smoke tests with Base ETH for gas where required by the payment flow.
@@ -29,3 +29,7 @@
 - Replace all TODO business stubs and add persistence/idempotency before production traffic.
 - Add monitoring for facilitator latency, verification failures, settlement failures, rejected payments, and treasury balance.
 - Never commit `.env`, CDP secrets, private keys, or production RPC credentials.
+
+## Single-project Vercel routing
+
+The five services are mounted by `api/portfolio.ts` and deployed through the existing project. The public prefixes are `/alpharoute`, `/sentinelfeed`, `/complyrail`, `/distillforge`, and `/proofmesh`. Deploy from the repository root with `vercel --prod`.

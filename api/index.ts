@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import { paymentMiddleware, Network } from "x402-express";
+import { declareDiscoveryExtension, bazaarResourceServerExtension } from "@x402/extensions/bazaar";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -27,6 +28,29 @@ try {
           network: NETWORK,
           config: {
             description: "Returns fresh scraped JSON data for a given target URL",
+          },
+          extensions: {
+            ...declareDiscoveryExtension({
+              input: { target: "https://example.com" },
+              inputSchema: {
+                properties: {
+                  target: { type: "string", description: "URL to scrape data for" },
+                },
+                required: ["target"],
+              },
+              output: {
+                example: {
+                  success: true,
+                  data: {
+                    target: "https://example.com",
+                    scrapedAt: "2026-08-17T12:00:00.000Z",
+                    title: "Sample title for https://example.com",
+                    price: 129.99,
+                    inStock: true,
+                  },
+                },
+              },
+            }),
           },
         },
       },

@@ -3,18 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "dev": "ts-node-dev --respawn src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js"
-},
+    "dev": "ts-node-dev --respawn src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@x402/extensions": "^2.22.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "x402-express": "^1.2.0"
+    "viem": "^2.55.16",
+    "x402-express": "^1.2.0",
+    "x402-fetch": "^1.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

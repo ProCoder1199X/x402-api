@@ -57,6 +57,10 @@ server.registerTool(
   }
 );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("x402 MCP server running on stdio");
+async function main(): Promise<void> {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("x402 MCP server running on stdio");
+}
+
+void main();

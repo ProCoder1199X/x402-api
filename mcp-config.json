@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "x402-scraped-data": {
+      "url": "https://x402-api-91r3.vercel.app",
+      "description": "Paid scraped-data API using x402 payments on Base. The server exposes GET /api/scraped-data and requires $0.01 USDC per call.",
+      "transport": "streamable-http"
+    }
+  }
+}

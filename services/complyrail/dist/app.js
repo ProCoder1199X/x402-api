@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const x402_middleware_1 = require("@x402/x402-middleware");
+const service_runtime_1 = require("@x402/service-runtime");
+const app = (0, express_1.default)();
+app.use(express_1.default.json());
+const payment = (0, service_runtime_1.paymentOptions)();
+app.use((0, x402_middleware_1.createPaymentMiddleware)(payment, { path: "/api/v1/screen/wallet/:address", pricing: (0, x402_middleware_1.flatPrice)("$0.01"), description: "Wallet sanctions screening" }));
+app.get("/api/v1/screen/wallet/:address", (request, response) => response.json({ address: request.params.address, sanctioned: false, riskScore: 0 }));
+app.use((0, x402_middleware_1.createPaymentMiddleware)(payment, { path: "/api/v1/screen/transaction", pricing: (0, x402_middleware_1.notionalPrice)({ base: 0.35, basisPoints: 0, minimum: 0.35, readNotional: () => 0 }), description: "Signed transaction compliance attestation" }));
+app.get("/api/v1/screen/transaction", (_request, response) => response.json({ riskScore: 0, sanctioned: false, attestation: { payload: "{}", signature: "0x", signerAddress: "0x0000000000000000000000000000000000000000", issuedAt: new Date().toISOString() }, settlementTxHash: null }));
+app.use((0, x402_middleware_1.createPaymentMiddleware)(payment, { path: "/api/v1/attest/batch", method: "POST", pricing: (0, x402_middleware_1.flatPrice)("$0.10"), description: "Batch compliance attestations" }));
+app.post("/api/v1/attest/batch", (_request, response) => response.json({ attestations: [] }));
+app.use((0, x402_middleware_1.createPaymentMiddleware)(payment, { path: "/health", pricing: (0, x402_middleware_1.flatPrice)("$0.001"), description: "Paid ComplyRail health request" }));
+app.get("/health", (_request, response) => response.json({ status: "ok", service: "complyrail" }));
+(0, service_runtime_1.start)(app);

@@ -1,0 +1,13 @@
+{
+  "name": "@x402/service-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "@x402/x402-middleware": "file:../x402-middleware"
+  }
+}

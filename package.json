@@ -1,12 +1,24 @@
 {
-  "name": "x402-api",
+  "name": "x402-api-portfolio",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "build:all": "npm run build --workspace @x402/x402-middleware && npm run build --workspace @x402/service-runtime && npm run build --workspaces --if-present",
+    "dev:alpharoute": "npm run dev --workspace @x402/alpharoute",
+    "dev:sentinelfeed": "npm run dev --workspace @x402/sentinelfeed",
+    "dev:complyrail": "npm run dev --workspace @x402/complyrail",
+    "dev:distillforge": "npm run dev --workspace @x402/distillforge",
+    "dev:proofmesh": "npm run dev --workspace @x402/proofmesh",
+    "smoke": "tsx scripts/smoke-test.ts"
   },
+  "workspaces": [
+    "services/*",
+    "shared/*"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -25,6 +37,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "tsx": "^4.19.0"
   }
 }

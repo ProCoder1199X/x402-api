@@ -1,0 +1,14 @@
+{
+  "name": "@x402/x402-middleware",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "x402-express": "^1.2.0"
+  }
+}

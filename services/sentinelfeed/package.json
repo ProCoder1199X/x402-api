@@ -1,0 +1,1 @@
+{"name":"@x402/sentinelfeed","private":true,"scripts":{"build":"tsc -p tsconfig.json","dev":"tsx watch src/app.ts"},"dependencies":{"@x402/x402-middleware":"file:../../shared/x402-middleware","@x402/service-runtime":"file:../../shared/service-runtime","express":"^5.2.1"}}
